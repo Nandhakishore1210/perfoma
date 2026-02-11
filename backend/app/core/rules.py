@@ -45,6 +45,7 @@ SUBJECT_CODE_PATTERNS = {
 # OD/ML adjustment rules
 OD_ML_RULES = {
     "apply_below_percentage": 75.0,
+    "min_percentage_for_adjustment": 65.0,  # Only apply OD/ML if student has at least 65% original attendance
     "include_od": True,
     "include_ml": True,
     "max_adjustment_percentage": 10.0  # Maximum 10% boost from OD/ML

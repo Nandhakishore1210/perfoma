@@ -116,10 +116,22 @@ def auto_detect_columns(df):
 def extract_base_code(subject_code):
     """Extract base code from subject code (removes T/L suffix)"""
     subject_code = str(subject_code).strip().upper()
-    if subject_code.endswith('T'):
-        return subject_code[:-1], 'T'
-    elif subject_code.endswith('L'):
-        return subject_code[:-1], 'L'
+    
+    # Handle R21/R18 suffixes
+    clean_code = subject_code.replace("-R21", "").replace("-R18", "")
+    
+    if clean_code.endswith('T'):
+        # Reconstruct base if it had a suffix
+        if "-R" in subject_code:
+             suffix = subject_code[subject_code.find("-R"):]
+             return clean_code[:-1] + suffix, 'T'
+        return clean_code[:-1], 'T'
+        
+    elif clean_code.endswith('L'):
+        if "-R" in subject_code:
+             suffix = subject_code[subject_code.find("-R"):]
+             return clean_code[:-1] + suffix, 'L'
+        return clean_code[:-1], 'L'
     else:
         return subject_code, ''
 
@@ -286,10 +298,12 @@ def process_excel_file(file_path):
             # Calculate original percentage
             original_pct = calculate_percentage(total_attended, total_conducted)
             
-            # Apply OD/ML boost if < 75%
+            # Apply OD/ML boost if < 75% AND >= 65%
+            # Rule: Only apply if original % < 75 AND original % >= 65
             od_ml_adjusted = False
             final_pct = original_pct
-            if original_pct < 75 and (total_od + total_ml > 0):
+            
+            if original_pct < 75 and original_pct >= 65 and (total_od + total_ml > 0):
                 adjusted_attended = min(total_attended + total_od + total_ml, total_conducted)
                 final_pct = calculate_percentage(adjusted_attended, total_conducted)
                 od_ml_adjusted = True
@@ -300,7 +314,17 @@ def process_excel_file(file_path):
                 'code': base_code,
                 'name': subject_data['subject_name'],
                 'is_combined': len(records_list) > 1,
-                'components': [r['subject_code'] for r in records_list],
+                'combined_from': [r['subject_code'] for r in records_list],
+                'components': [
+                    {
+                        'subject_code': r['subject_code'], 
+                        'classes_conducted': r['conducted'],
+                        'classes_attended': r['attended'],
+                        'od_count': r['od'],
+                        'ml_count': r['ml'],
+                        'percentage': calculate_percentage(r['attended'], r['conducted'])
+                    } for r in records_list
+                ],
                 'conducted': total_conducted,
                 'attended': total_attended,
                 'od': total_od,
@@ -354,6 +378,14 @@ def process_excel_file(file_path):
                 adj_indicator = " ✅OD/ML" if subj['od_ml_adjusted'] else ""
                 combined_indicator = " (T+L)" if subj['is_combined'] else ""
                 print(f"     {subj['emoji']} {subj['code']:15} {subj['final_pct']:5.1f}%{combined_indicator}{adj_indicator}")
+                
+                # Show breakdown if combined
+                if subj['is_combined']:
+                    for comp in subj['components']:
+                        od_ml_str = ""
+                        if comp['od_count'] > 0 or comp['ml_count'] > 0:
+                            od_ml_str = f" [OD:{comp['od_count']} ML:{comp['ml_count']}]"
+                        print(f"        └─ {comp['subject_code']:15}: {comp['percentage']}% ({comp['classes_attended']}/{comp['classes_conducted']}){od_ml_str}")
     
     # Show danger students
     danger = [r for r in results if r['category'] == 'danger']
@@ -362,7 +394,7 @@ def process_excel_file(file_path):
         print(f"🟠 DANGER ZONE - {len(danger)} students between 65-75% attendance")
         print("=" * 100)
         for i, student in enumerate(danger[:10], 1):
-            print(f"{i:2d}. {student['student_id']:15} {student['student_name'][:35]:35} Overall: {student['overall_percentage']:5.1f}%")
+             print(f"{i:2d}. {student['student_id']:15} {student['student_name'][:35]:35} Overall: {student['overall_percentage']:5.1f}%")
     
     # Show top performers
     safe = [r for r in results if r['category'] == 'safe']

@@ -28,12 +28,29 @@ class SubjectMergerService:
         """
         subject_code = subject_code.strip().upper()
         
+        # Normalize: Remove -R21 or other common suffixes for base detection if needed
+        clean_code = subject_code.replace("-R21", "").replace("-R18", "")
+        
         # Check if ends with T or L
-        if subject_code.endswith(self.theory_suffix):
-            base_code = subject_code[:-1]
+        if clean_code.endswith(self.theory_suffix):
+            # Extract everything before the last character of the clean code
+            # But keep the original suffix if it exists in the full code
+            base_length = len(clean_code) - 1
+            if "-R" in subject_code:
+                # Reconstruct base with R-suffix: U18ITI7203 + -R21
+                suffix_part = subject_code[subject_code.find("-R"):]
+                base_code = clean_code[:base_length] + suffix_part
+            else:
+                base_code = clean_code[:base_length]
             return base_code, "T"
-        elif subject_code.endswith(self.lab_suffix):
-            base_code = subject_code[:-1]
+            
+        elif clean_code.endswith(self.lab_suffix):
+            base_length = len(clean_code) - 1
+            if "-R" in subject_code:
+                suffix_part = subject_code[subject_code.find("-R"):]
+                base_code = clean_code[:base_length] + suffix_part
+            else:
+                base_code = clean_code[:base_length]
             return base_code, "L"
         else:
             # No suffix, standalone subject
@@ -114,11 +131,30 @@ class SubjectMergerService:
             None
         )
         
+        # Create component breakdown
+        components = []
+        for rec in records:
+            # Calculate component percentage
+            comp_pct = 0.0
+            if rec.classes_conducted > 0:
+                comp_pct = round((rec.classes_attended / rec.classes_conducted) * 100, 2)
+                
+            components.append({
+                "subject_code": rec.subject_code,
+                "subject_name": rec.subject_name,
+                "classes_conducted": rec.classes_conducted,
+                "classes_attended": rec.classes_attended,
+                "od_count": rec.od_count or 0,
+                "ml_count": rec.ml_count or 0,
+                "percentage": comp_pct
+            })
+
         return SubjectAttendance(
             subject_code=base_code,
             subject_name=subject_name,
             is_combined=True,
             combined_from=combined_from,
+            components=components,
             classes_conducted=total_conducted,
             classes_attended=total_attended,
             od_count=total_od,

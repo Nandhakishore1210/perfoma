@@ -38,6 +38,16 @@ class FileUploadResponse(BaseModel):
 
 # ============= Processing Models =============
 
+class SubjectComponent(BaseModel):
+    """Component of a merged subject (e.g., Theory or Lab part)"""
+    subject_code: str
+    subject_name: Optional[str]
+    classes_conducted: int
+    classes_attended: int
+    od_count: int = 0
+    ml_count: int = 0
+    percentage: float = 0.0
+
 class SubjectAttendance(BaseModel):
     """Combined subject attendance (Theory + Lab merged)"""
     subject_code: str
@@ -49,6 +59,10 @@ class SubjectAttendance(BaseModel):
     combined_from: Optional[List[str]] = Field(
         default=None,
         description="Original subject codes if combined (e.g., ['CS301T', 'CS301L'])"
+    )
+    components: Optional[List['SubjectComponent']] = Field(
+        default=None,
+        description="Detailed breakdown of combined components"
     )
     classes_conducted: int
     classes_attended: int

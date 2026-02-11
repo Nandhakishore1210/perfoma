@@ -52,9 +52,13 @@ class AttendanceCalculator:
         subject.original_percentage = original_percentage
         
         # Check if adjustment should be applied
+        # Rule: Only apply if original % < 75 AND original % >= 65
+        min_threshold = OD_ML_RULES.get("min_percentage_for_adjustment", 65.0)
+        
         should_adjust = (
             self.enable_od_ml and
             original_percentage < self.od_ml_threshold and
+            original_percentage >= min_threshold and
             (subject.od_count > 0 or subject.ml_count > 0)
         )
         

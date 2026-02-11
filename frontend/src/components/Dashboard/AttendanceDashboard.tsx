@@ -318,22 +318,40 @@ const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({ uploadId, fil
                                                     </Typography>
                                                 </Box>
 
-                                                {subject.is_combined && subject.combined_from && (
+                                                {subject.is_combined && (
                                                     <Collapse in={isExpanded}>
                                                         <Box sx={{ ml: 3, mt: 0.5, pl: 1, borderLeft: '2px solid #e0e0e0' }}>
-                                                            {subject.combined_from.map((code, i) => {
-                                                                const isTheory = code.endsWith('T');
-                                                                const isLab = code.endsWith('L');
-                                                                const label = isTheory ? 'Theory' : isLab ? 'Lab' : code;
+                                                            {/* Display detailed components if available */}
+                                                            {subject.components && subject.components.length > 0 ? (
+                                                                subject.components.map((comp, i) => {
+                                                                    const isTheory = comp.subject_code.endsWith('T');
+                                                                    const isLab = comp.subject_code.endsWith('L');
+                                                                    const label = isTheory ? 'Theory' : isLab ? 'Lab' : comp.subject_code;
 
-                                                                return (
+                                                                    return (
+                                                                        <Box key={i} sx={{ mb: 0.5 }}>
+                                                                            <Typography variant="caption" sx={{ display: 'block', color: '#444', fontWeight: 500, fontSize: '0.75rem' }}>
+                                                                                {label} ({comp.subject_code})
+                                                                            </Typography>
+                                                                            <Typography variant="caption" sx={{ display: 'block', color: '#666', fontSize: '0.7rem' }}>
+                                                                                Details: {comp.classes_attended}/{comp.classes_conducted} ({comp.percentage}%)
+                                                                                {comp.od_count > 0 && ` | OD: ${comp.od_count}`}
+                                                                                {comp.ml_count > 0 && ` | ML: ${comp.ml_count}`}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    );
+                                                                })
+                                                            ) : (
+                                                                // Fallback for backward compatibility
+                                                                subject.combined_from?.map((code, i) => (
                                                                     <Typography key={i} variant="caption" sx={{ display: 'block', color: '#666', fontSize: '0.7rem' }}>
-                                                                        <strong>{label}</strong>: {code}
+                                                                        {code}
                                                                     </Typography>
-                                                                );
-                                                            })}
-                                                            <Typography variant="caption" sx={{ display: 'block', color: '#666', fontSize: '0.7rem', mt: 0.5 }}>
-                                                                Combined: {subject.classes_attended}/{subject.classes_conducted} classes
+                                                                ))
+                                                            )}
+
+                                                            <Typography variant="caption" sx={{ display: 'block', color: '#1976d2', fontSize: '0.7rem', mt: 0.5, fontStyle: 'italic' }}>
+                                                                Total: {subject.classes_attended}/{subject.classes_conducted}
                                                                 {subject.od_count > 0 && ` | OD: ${subject.od_count}`}
                                                                 {subject.ml_count > 0 && ` | ML: ${subject.ml_count}`}
                                                             </Typography>

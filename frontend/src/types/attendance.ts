@@ -1,4 +1,5 @@
-// TypeScript interfaces for attendance data
+
+import type { SubjectAttendance, SubjectComponent } from './index';
 
 export interface AttendanceRecordInput {
     student_id: string;
@@ -11,22 +12,7 @@ export interface AttendanceRecordInput {
     ml_count?: number;
 }
 
-export interface SubjectAttendance {
-    subject_code: string;
-    subject_name?: string;
-    is_combined: boolean;
-    combined_from?: string[];
-    classes_conducted: number;
-    classes_attended: number;
-    od_count: number;
-    ml_count: number;
-    original_percentage: number;
-    od_ml_adjusted: boolean;
-    final_percentage: number;
-    category: string;
-    category_label: string;
-    category_color: string;
-}
+
 
 export interface StudentAttendance {
     student_id: string;
