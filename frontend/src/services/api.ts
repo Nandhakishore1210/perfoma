@@ -27,8 +27,8 @@ export const uploadFile = async (file: File) => {
 };
 
 // Analyze attendance
-export const analyzeAttendance = async (uploadId: string) => {
-    const response = await api.post(`/analyze/${uploadId}`);
+export const analyzeAttendance = async (uploadId: string, regulation: string = "U18") => {
+    const response = await api.post(`/analyze/${uploadId}?regulation=${regulation}`);
     return response.data;
 };
 

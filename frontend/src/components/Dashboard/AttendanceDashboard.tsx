@@ -30,6 +30,7 @@ import { analyzeAttendance, generateReport, downloadReport } from '../../service
 interface AttendanceDashboardProps {
     uploadId: string;
     filename: string;
+    regulation: string;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -46,7 +47,7 @@ const CATEGORY_LABELS: Record<string, string> = {
     safe: 'Safe',
 };
 
-const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({ uploadId, filename }) => {
+const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({ uploadId, filename, regulation }) => {
     const [analysis, setAnalysis] = useState<AttendanceAnalysis | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -64,7 +65,7 @@ const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({ uploadId, fil
         setError(null);
 
         try {
-            const data = await analyzeAttendance(uploadId);
+            const data = await analyzeAttendance(uploadId, regulation);
             setAnalysis(data);
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to analyze attendance');
@@ -127,7 +128,7 @@ const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({ uploadId, fil
                         Attendance Analysis
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        File: {filename}
+                        File: {filename} • Regulation: <Chip label={regulation} size="small" color="primary" variant="outlined" sx={{ ml: 1, height: 20, fontSize: '0.75rem' }} />
                     </Typography>
                 </Box>
                 <Button

@@ -23,17 +23,20 @@ const theme = createTheme({
 function App() {
   const [uploadId, setUploadId] = useState<string | null>(null);
   const [filename, setFilename] = useState<string>('');
+  const [regulation, setRegulation] = useState<string>('U18');
   const [activeStep, setActiveStep] = useState(0);
 
-  const handleUploadSuccess = (id: string, name: string) => {
+  const handleUploadSuccess = (id: string, name: string, reg: string) => {
     setUploadId(id);
     setFilename(name);
+    setRegulation(reg);
     setActiveStep(1);
   };
 
   const handleReset = () => {
     setUploadId(null);
     setFilename('');
+    setRegulation('U18');
     setActiveStep(0);
   };
 
@@ -85,7 +88,7 @@ function App() {
 
             {activeStep === 1 && uploadId && (
               <Box>
-                <AttendanceDashboard uploadId={uploadId} filename={filename} />
+                <AttendanceDashboard uploadId={uploadId} filename={filename} regulation={regulation} />
                 <Box sx={{ mt: 3, textAlign: 'center' }}>
                   <Typography
                     variant="body2"

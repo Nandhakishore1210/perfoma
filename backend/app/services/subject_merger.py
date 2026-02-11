@@ -15,50 +15,61 @@ class SubjectMergerService:
         self.theory_suffix = SUBJECT_CODE_PATTERNS["theory_suffix"]
         self.lab_suffix = SUBJECT_CODE_PATTERNS["lab_suffix"]
     
-    def extract_base_code(self, subject_code: str) -> Tuple[str, str]:
+    def extract_base_code(self, subject_code: str, regulation: str = "U18") -> Tuple[str, str]:
         """
         Extract base code and type from subject code
-        
-        Args:
-            subject_code: Subject code (e.g., CS301T, CS301L, MATH101)
-            
-        Returns:
-            Tuple of (base_code, subject_type)
-            e.g., ("CS301", "T"), ("CS301", "L"), ("MATH101", "")
         """
         subject_code = subject_code.strip().upper()
         
-        # Normalize: Remove -R21 or other common suffixes for base detection if needed
+        # Normalize common suffixes
         clean_code = subject_code.replace("-R21", "").replace("-R18", "")
         
-        # Check if ends with T or L
-        if clean_code.endswith(self.theory_suffix):
-            # Extract everything before the last character of the clean code
-            # But keep the original suffix if it exists in the full code
-            base_length = len(clean_code) - 1
-            if "-R" in subject_code:
-                # Reconstruct base with R-suffix: U18ITI7203 + -R21
-                suffix_part = subject_code[subject_code.find("-R"):]
-                base_code = clean_code[:base_length] + suffix_part
+        if regulation == "R24":
+            # R24 Logic: Merge 'Code' and 'CodeL'
+            # Check for explicit Lab suffix first
+            if clean_code.endswith(self.lab_suffix):
+                # Similar logic to U18 but specifically for L
+                base_length = len(clean_code) - 1
+                if "-R" in subject_code:
+                    suffix_part = subject_code[subject_code.find("-R"):]
+                    base_code = clean_code[:base_length] + suffix_part
+                else:
+                    base_code = clean_code[:base_length]
+                return base_code, "L"
             else:
-                base_code = clean_code[:base_length]
-            return base_code, "T"
-            
-        elif clean_code.endswith(self.lab_suffix):
-            base_length = len(clean_code) - 1
-            if "-R" in subject_code:
-                suffix_part = subject_code[subject_code.find("-R"):]
-                base_code = clean_code[:base_length] + suffix_part
-            else:
-                base_code = clean_code[:base_length]
-            return base_code, "L"
+                # Treat everything else (including T) as the base/Theory
+                # Even if it has T, we don't strip it unless it matches the L base... which is tricky.
+                # BUT user said: "check if L exist check it with another code if it is same"
+                # This implies Code (Theory) + CodeL (Lab).
+                # So Code is the base.
+                return subject_code, "T"
+
         else:
-            # No suffix, standalone subject
-            return subject_code, ""
+            # U18 Logic: Merge 'CodeT' and 'CodeL'
+            if clean_code.endswith(self.theory_suffix):
+                base_length = len(clean_code) - 1
+                if "-R" in subject_code:
+                    suffix_part = subject_code[subject_code.find("-R"):]
+                    base_code = clean_code[:base_length] + suffix_part
+                else:
+                    base_code = clean_code[:base_length]
+                return base_code, "T"
+                
+            elif clean_code.endswith(self.lab_suffix):
+                base_length = len(clean_code) - 1
+                if "-R" in subject_code:
+                    suffix_part = subject_code[subject_code.find("-R"):]
+                    base_code = clean_code[:base_length] + suffix_part
+                else:
+                    base_code = clean_code[:base_length]
+                return base_code, "L"
+            else:
+                return subject_code, ""
     
     def group_by_student_and_base(
         self, 
-        records: List[AttendanceRecordInput]
+        records: List[AttendanceRecordInput],
+        regulation: str = "U18"
     ) -> Dict[str, Dict[str, List[AttendanceRecordInput]]]:
         """
         Group attendance records by student and base subject code
@@ -73,7 +84,7 @@ class SubjectMergerService:
         
         for record in records:
             student_id = record.student_id
-            base_code, _ = self.extract_base_code(record.subject_code)
+            base_code, _ = self.extract_base_code(record.subject_code, regulation)
             
             if student_id not in grouped:
                 grouped[student_id] = {}
@@ -163,19 +174,21 @@ class SubjectMergerService:
     
     def process_all_subjects(
         self, 
-        records: List[AttendanceRecordInput]
+        records: List[AttendanceRecordInput],
+        regulation: str = "U18"
     ) -> Dict[str, List[SubjectAttendance]]:
         """
         Process all records and return merged subjects per student
         
         Args:
             records: All attendance records
+            regulation: Regulation type (U18 or R24)
             
         Returns:
             Dict mapping student_id to list of merged SubjectAttendance
         """
         # Group by student and base subject
-        grouped = self.group_by_student_and_base(records)
+        grouped = self.group_by_student_and_base(records, regulation)
         
         # Process each student's subjects
         result = {}

@@ -24,11 +24,12 @@ analysis_storage = {}
 
 
 @router.post("/analyze/{upload_id}", response_model=AttendanceAnalysisResponse)
-async def analyze_attendance(upload_id: str):
+async def analyze_attendance(upload_id: str, regulation: str = "U18"):
     """
     Analyze attendance data for an upload
     
     - **upload_id**: Upload identifier
+    - **regulation**: Regulation type (U18 or R24)
     """
     # Check if upload exists
     if upload_id not in upload_storage:
@@ -39,7 +40,7 @@ async def analyze_attendance(upload_id: str):
     records = upload_data["records"]
     
     # Step 1: Merge Theory/Lab subjects
-    merged_subjects = subject_merger.process_all_subjects(records)
+    merged_subjects = subject_merger.process_all_subjects(records, regulation=regulation)
     
     # Step 2: Calculate attendance for each student
     students: List[StudentAttendance] = []

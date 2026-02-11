@@ -1,18 +1,31 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Box, Typography, Paper, Button, LinearProgress, Alert } from '@mui/material';
+import {
+    Box,
+    Typography,
+    Paper,
+    Button,
+    LinearProgress,
+    Alert,
+    Radio,
+    RadioGroup,
+    FormControlLabel,
+    FormControl,
+    FormLabel
+} from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import { uploadFile } from '../../services/api';
 
 interface FileUploadProps {
-    onUploadSuccess: (uploadId: string, filename: string) => void;
+    onUploadSuccess: (uploadId: string, filename: string, regulation: string) => void;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+    const [regulation, setRegulation] = useState<string>('U18');
 
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
         if (acceptedFiles.length === 0) return;
@@ -25,12 +38,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         try {
             const response = await uploadFile(file);
             setUploading(false);
-            onUploadSuccess(response.upload_id, response.filename);
+            // Pass the selected regulation along with upload details
+            onUploadSuccess(response.upload_id, response.filename, regulation);
         } catch (err: any) {
             setUploading(false);
             setError(err.response?.data?.detail || 'Failed to upload file');
         }
-    }, [onUploadSuccess]);
+    }, [onUploadSuccess, regulation]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -44,6 +58,44 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
 
     return (
         <Box>
+            {/* Regulation Selection */}
+            <Paper sx={{ p: 3, mb: 3 }}>
+                <FormControl>
+                    <FormLabel id="regulation-group-label" sx={{ mb: 1, fontWeight: 'bold' }}>
+                        Select Regulation
+                    </FormLabel>
+                    <RadioGroup
+                        row
+                        aria-labelledby="regulation-group-label"
+                        name="regulation-group"
+                        value={regulation}
+                        onChange={(e) => setRegulation(e.target.value)}
+                    >
+                        <FormControlLabel
+                            value="U18"
+                            control={<Radio />}
+                            label={
+                                <Box>
+                                    <Typography variant="body1" fontWeight="bold">U18 Regulation</Typography>
+                                    <Typography variant="caption" color="text.secondary">Merge Codes ending in T & L (e.g., CS101T + CS101L)</Typography>
+                                </Box>
+                            }
+                            sx={{ mr: 4 }}
+                        />
+                        <FormControlLabel
+                            value="R24"
+                            control={<Radio />}
+                            label={
+                                <Box>
+                                    <Typography variant="body1" fontWeight="bold">R24 Regulation</Typography>
+                                    <Typography variant="caption" color="text.secondary">Merge Code & CodeL (e.g., CS101 + CS101L)</Typography>
+                                </Box>
+                            }
+                        />
+                    </RadioGroup>
+                </FormControl>
+            </Paper>
+
             <Paper
                 {...getRootProps()}
                 sx={{
