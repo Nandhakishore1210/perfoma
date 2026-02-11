@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # File Upload Settings
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_FILE_TYPES: List[str] = [".xlsx", ".xls", ".pdf"]
-    UPLOAD_DIR: str = "uploads"
+    UPLOAD_DIR: str = "/tmp/uploads"  # Use /tmp for Render's read-only filesystem
     
     # Attendance Rules
     OD_ML_THRESHOLD: float = 75.0

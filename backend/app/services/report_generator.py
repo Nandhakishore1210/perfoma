@@ -15,7 +15,7 @@ from app.core.rules import ATTENDANCE_CATEGORIES
 class ReportGenerator:
     """Service to generate attendance reports in various formats"""
     
-    def __init__(self, output_dir: str = "reports"):
+    def __init__(self, output_dir: str = "/tmp/reports"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
     

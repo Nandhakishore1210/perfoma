@@ -190,7 +190,7 @@ async def download_report(filename: str):
     """
     from pathlib import Path
     
-    filepath = Path("reports") / filename
+    filepath = Path("/tmp/reports") / filename
     
     if not filepath.exists():
         raise HTTPException(status_code=404, detail="Report not found")
