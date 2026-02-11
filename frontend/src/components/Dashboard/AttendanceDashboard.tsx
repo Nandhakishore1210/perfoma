@@ -24,7 +24,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import type { AttendanceAnalysis, StudentAttendance } from '../../types/index';
+import type { AttendanceAnalysis } from '../../types/index';
 import { analyzeAttendance, generateReport, downloadReport } from '../../services/api';
 
 interface AttendanceDashboardProps {

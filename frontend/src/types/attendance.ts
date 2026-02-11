@@ -1,5 +1,5 @@
 
-import type { SubjectAttendance, SubjectComponent } from './index';
+import type { SubjectAttendance } from './index';
 
 export interface AttendanceRecordInput {
     student_id: string;
