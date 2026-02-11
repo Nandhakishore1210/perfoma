@@ -22,6 +22,8 @@ We will use Render's "Blueprints" feature to deploy both the Backend API and the
 6.  Click **Apply**.
     -   This will create a **Web Service** (`perfoma-backend`) and a **PostgreSQL Database** (`perfoma-db`).
     -   It uses the **Free Plan** for both services.
+    -   **Note**: The application is configured to automatically create the necessary database tables when it starts up.
+
 7.  Wait for the deployment to finish. It may take a few minutes.
 8.  **Important**: Once deployed, go to the **Dashboard**, click on the `perfoma-backend` service, and **copy the service URL** (e.g., `https://perfoma-backend.onrender.com`). You will need this for the frontend.
 

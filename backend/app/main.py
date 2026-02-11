@@ -15,6 +15,12 @@ app = FastAPI(
     redoc_url="/api/redoc"
 )
 
+# Create database tables
+from app.core.database import engine
+from app.models import sql_models
+sql_models.Base.metadata.create_all(bind=engine)
+
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,

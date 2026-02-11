@@ -1,25 +1,25 @@
 """
 File upload API endpoints
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 from pathlib import Path
 import uuid
 import shutil
+import json
 from typing import List
 
 from app.core.config import settings
+from app.core.database import get_db
 from app.models.schemas import FileUploadResponse, ErrorResponse, AttendanceRecordInput
+from app.models.sql_models import Upload
 from app.services.parser_service import file_parser
 
 router = APIRouter()
 
-# In-memory storage for upload data (replace with database in production)
-upload_storage = {}
-
-
 @router.post("/upload", response_model=FileUploadResponse)
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """
     Upload attendance file (Excel or PDF)
     
@@ -74,13 +74,27 @@ async def upload_file(file: UploadFile = File(...)):
             detail="No valid attendance records found in file"
         )
     
-    # Store upload data
-    upload_storage[upload_id] = {
-        "file_path": str(file_path),
-        "filename": file.filename,
-        "file_type": file_parser.detect_file_type(file.filename),
-        "records": records
-    }
+    # Store upload data in DB
+    try:
+        # Convert Pydantic models to dict for JSON storage
+        records_json = [record.dict() for record in records]
+        
+        db_upload = Upload(
+            upload_id=upload_id,
+            filename=file.filename,
+            file_type=file_parser.detect_file_type(file.filename),
+            file_path=str(file_path),
+            total_records=len(records),
+            records=records_json
+        )
+        db.add(db_upload)
+        db.commit()
+        db.refresh(db_upload)
+    except Exception as e:
+        # Clean up on DB error
+        file_path.unlink(missing_ok=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
     # Return response with preview
     preview_count = min(5, len(records))
@@ -96,42 +110,42 @@ async def upload_file(file: UploadFile = File(...)):
 
 
 @router.get("/uploads/{upload_id}")
-async def get_upload(upload_id: str):
+async def get_upload(upload_id: str, db: Session = Depends(get_db)):
     """
     Get upload metadata
     
     - **upload_id**: Upload identifier
     """
-    if upload_id not in upload_storage:
+    db_upload = db.query(Upload).filter(Upload.upload_id == upload_id).first()
+    if not db_upload:
         raise HTTPException(status_code=404, detail="Upload not found")
     
-    upload_data = upload_storage[upload_id]
-    
     return {
-        "upload_id": upload_id,
-        "filename": upload_data["filename"],
-        "file_type": upload_data["file_type"],
-        "total_records": len(upload_data["records"])
+        "upload_id": db_upload.upload_id,
+        "filename": db_upload.filename,
+        "file_type": db_upload.file_type,
+        "total_records": db_upload.total_records
     }
 
 
 @router.delete("/uploads/{upload_id}")
-async def delete_upload(upload_id: str):
+async def delete_upload(upload_id: str, db: Session = Depends(get_db)):
     """
     Delete uploaded file and its data
     
     - **upload_id**: Upload identifier
     """
-    if upload_id not in upload_storage:
+    db_upload = db.query(Upload).filter(Upload.upload_id == upload_id).first()
+    if not db_upload:
         raise HTTPException(status_code=404, detail="Upload not found")
     
-    upload_data = upload_storage[upload_id]
-    
     # Delete file
-    file_path = Path(upload_data["file_path"])
+    file_path = Path(db_upload.file_path)
     file_path.unlink(missing_ok=True)
     
-    # Remove from storage
-    del upload_storage[upload_id]
+    # Remove from DB
+    db.delete(db_upload)
+    db.commit()
     
     return {"message": "Upload deleted successfully"}
+
