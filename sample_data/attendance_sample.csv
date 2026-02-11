@@ -1,0 +1,16 @@
+Student ID,Student Name,Subject Code,Subject Name,Classes Conducted,Classes Attended,OD,ML
+S001,John Doe,CS301T,Data Structures Theory,30,25,2,1
+S001,John Doe,CS301L,Data Structures Lab,15,12,0,1
+S001,John Doe,MA201T,Mathematics,25,20,1,0
+S002,Jane Smith,CS301T,Data Structures Theory,30,18,1,2
+S002,Jane Smith,CS301L,Data Structures Lab,15,10,0,1
+S002,Jane Smith,MA201T,Mathematics,25,15,0,0
+S003,Bob Johnson,CS301T,Data Structures Theory,30,28,0,0
+S003,Bob Johnson,CS301L,Data Structures Lab,15,14,0,0
+S003,Bob Johnson,MA201T,Mathematics,25,24,0,0
+S004,Alice Wilson,CS301T,Data Structures Theory,30,15,3,2
+S004,Alice Wilson,CS301L,Data Structures Lab,15,8,1,1
+S004,Alice Wilson,MA201T,Mathematics,25,12,2,0
+S005,Charlie Brown,CS301T,Data Structures Theory,30,24,0,1
+S005,Charlie Brown,CS301L,Data Structures Lab,15,11,0,0
+S005,Charlie Brown,MA201T,Mathematics,25,19,1,0
