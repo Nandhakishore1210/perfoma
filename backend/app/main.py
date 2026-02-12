@@ -18,7 +18,15 @@ app = FastAPI(
 # Create database tables
 from app.core.database import engine
 from app.models import sql_models
-sql_models.Base.metadata.create_all(bind=engine)
+import logging
+
+logger = logging.getLogger(__name__)
+
+try:
+    sql_models.Base.metadata.create_all(bind=engine)
+except Exception as e:
+    logger.error(f"Error creating database tables: {e}")
+    # Continue startup even if DB fails, though API calls might fail later
 
 
 # Configure CORS
