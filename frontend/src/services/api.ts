@@ -3,7 +3,15 @@
  */
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://perfoma-qe6d.onrender.com/api';
+let API_BASE_URL = import.meta.env.VITE_API_URL || 'https://perfoma-qe6d.onrender.com/api';
+
+// Ensure URL ends with /api
+if (API_BASE_URL.endsWith('/')) {
+    API_BASE_URL = API_BASE_URL.slice(0, -1);
+}
+if (!API_BASE_URL.endsWith('/api')) {
+    API_BASE_URL += '/api';
+}
 
 export const api = axios.create({
     baseURL: API_BASE_URL,
