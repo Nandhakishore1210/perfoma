@@ -1,0 +1,23 @@
+services:
+  # Backend API Service
+  - type: web
+    name: perfoma
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: APP_NAME
+        value: Perfoma Attendance Analysis
+      - key: VERSION
+        value: 1.0.0
+      - key: DEBUG
+        value: false
+      - key: ALLOWED_ORIGINS
+        value: https://perfoma.vercel.app,http://localhost:5173,https://perfoma-dmkfg93my-nandhakishoresureshbabu-2100s-projects.vercel.app
+      - key: DATABASE_URL
+        value: postgresql://postgres.kjdmpfdkejxynztwverk:U3RTZNm2MtJUBxVU@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres
+    healthCheckPath: /api/health
+

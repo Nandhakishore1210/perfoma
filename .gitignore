@@ -1,5 +1,4 @@
 # Add deployment files
-render.yaml
 backend/start.sh
 
 # Local development
