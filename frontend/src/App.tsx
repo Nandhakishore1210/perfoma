@@ -3,6 +3,7 @@ import { Container, Box, Typography, Paper, Stepper, Step, StepLabel } from '@mu
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import FileUpload from './components/FileUpload/FileUpload';
+import DepartmentSelection from './components/DepartmentSelection/DepartmentSelection';
 import AttendanceDashboard from './components/Dashboard/AttendanceDashboard';
 
 const theme = createTheme({
@@ -24,6 +25,7 @@ function App() {
   const [uploadId, setUploadId] = useState<string | null>(null);
   const [filename, setFilename] = useState<string>('');
   const [regulation, setRegulation] = useState<string>('U18');
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
   const [activeStep, setActiveStep] = useState(0);
 
   const handleUploadSuccess = (id: string, name: string, reg: string) => {
@@ -37,10 +39,16 @@ function App() {
     setUploadId(null);
     setFilename('');
     setRegulation('U18');
+    setSelectedDepartment('');
     setActiveStep(0);
   };
 
-  const steps = ['Upload File', 'View Analysis'];
+  const handleDepartmentSelect = (department: string) => {
+    setSelectedDepartment(department);
+    setActiveStep(2);
+  };
+
+  const steps = ['Upload File', 'Select Department', 'View Analysis'];
 
   return (
     <ThemeProvider theme={theme}>
@@ -87,8 +95,21 @@ function App() {
             {activeStep === 0 && <FileUpload onUploadSuccess={handleUploadSuccess} />}
 
             {activeStep === 1 && uploadId && (
+              <DepartmentSelection
+                uploadId={uploadId}
+                regulation={regulation}
+                onSelect={handleDepartmentSelect}
+              />
+            )}
+
+            {activeStep === 2 && uploadId && (
               <Box>
-                <AttendanceDashboard uploadId={uploadId} filename={filename} regulation={regulation} />
+                <AttendanceDashboard
+                  uploadId={uploadId}
+                  filename={filename}
+                  regulation={regulation}
+                  selectedDepartment={selectedDepartment}
+                />
                 <Box sx={{ mt: 3, textAlign: 'center' }}>
                   <Typography
                     variant="body2"

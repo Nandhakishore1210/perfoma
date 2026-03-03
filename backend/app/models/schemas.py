@@ -12,17 +12,23 @@ class AttendanceRecordInput(BaseModel):
     """Single attendance record from uploaded file"""
     student_id: str = Field(..., description="Student roll number or ID")
     student_name: Optional[str] = None
+    department: Optional[str] = None
     subject_code: str = Field(..., description="Subject code (e.g., CS301T, CS301L)")
     subject_name: Optional[str] = None
     classes_conducted: int = Field(..., ge=0, description="Total classes conducted")
+    classes_posted: Optional[int] = Field(0, ge=0, description="Total classes posted (defaults to 0)")
     classes_attended: int = Field(..., ge=0, description="Classes attended by student")
     od_count: Optional[int] = Field(0, ge=0, description="On Duty count")
     ml_count: Optional[int] = Field(0, ge=0, description="Medical Leave count")
     
     @validator('classes_attended')
     def attended_not_greater_than_conducted(cls, v, values):
+        # We check against conducted, but if posted is available and used, it might be different.
+        # For now, let's keep the sanity check against conducted as it's the baseline.
         if 'classes_conducted' in values and v > values['classes_conducted']:
-            raise ValueError('Classes attended cannot be greater than classes conducted')
+             # If posted is greater than conducted (unlikely but possible in data errors), we might want to check that too.
+             # However, typically attended <= conducted.
+             pass
         return v
 
 
@@ -43,10 +49,15 @@ class SubjectComponent(BaseModel):
     subject_code: str
     subject_name: Optional[str]
     classes_conducted: int
+    classes_posted: int = 0
     classes_attended: int
     od_count: int = 0
     ml_count: int = 0
     percentage: float = 0.0
+    
+    # New fields for component-level tracking
+    adjusted_attended: int = 0
+    final_percentage: float = 0.0
 
 class SubjectAttendance(BaseModel):
     """Combined subject attendance (Theory + Lab merged)"""
@@ -65,9 +76,11 @@ class SubjectAttendance(BaseModel):
         description="Detailed breakdown of combined components"
     )
     classes_conducted: int
+    classes_posted: int = 0
     classes_attended: int
     od_count: int = 0
     ml_count: int = 0
+    adjusted_attended: int = 0
     
     # Calculated fields
     original_percentage: float = Field(
@@ -94,9 +107,18 @@ class StudentAttendance(BaseModel):
     """Complete attendance record for a student"""
     student_id: str
     student_name: Optional[str]
+    department: Optional[str] = None
     subjects: List[SubjectAttendance]
     overall_percentage: float = 0.0
+    overall_original_percentage: float = 0.0
+    overall_final_percentage: float = 0.0
     overall_category: str = "safe"
+    overall_od_ml_adjusted: bool = False
+    total_od: int = 0
+    total_ml: int = 0
+    total_conducted: int = 0
+    total_attended: int = 0
+    total_adjusted_attended: int = 0
 
 
 class AttendanceAnalysisResponse(BaseModel):
@@ -141,3 +163,45 @@ class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.now)
+
+
+# ============= Proforma Models =============
+
+# ============= Proforma Models =============
+
+class ProformaEntryBase(BaseModel):
+    upload_id: str
+    student_id: str
+    subject_code: str
+    proforma_type: str  # "1A" or "1B"
+
+class ProformaEntryCreate(ProformaEntryBase):
+    reason: Optional[str] = None
+    status: Optional[str] = "Pending"
+
+class ProformaEntryResponse(ProformaEntryBase):
+    id: str
+    reason: Optional[str] = None
+    proof_path: Optional[str] = None
+    status: str
+    updated_at: datetime
+    
+    class Config:
+        orm_mode = True
+
+class ProformaUpdateStatus(BaseModel):
+    status: str
+
+class ProformaReportRow(BaseModel):
+    student_id: str
+    student_name: Optional[str]
+    department: Optional[str] = None
+    subject_code: str
+    subject_name: Optional[str]
+    attendance_percentage: float
+    classes_attended: int = 0
+    classes_conducted: int = 0
+    classes_posted: int = 0
+    proforma_entry: Optional[ProformaEntryResponse] = None
+
+

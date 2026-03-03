@@ -4,9 +4,11 @@ import type { SubjectAttendance } from './index';
 export interface AttendanceRecordInput {
     student_id: string;
     student_name?: string;
+    department?: string;
     subject_code: string;
     subject_name?: string;
     classes_conducted: number;
+    classes_posted?: number;
     classes_attended: number;
     od_count?: number;
     ml_count?: number;
@@ -17,9 +19,18 @@ export interface AttendanceRecordInput {
 export interface StudentAttendance {
     student_id: string;
     student_name?: string;
+    department?: string;
     subjects: SubjectAttendance[];
     overall_percentage: number;
+    overall_original_percentage: number;
+    overall_final_percentage: number;
     overall_category: string;
+    overall_od_ml_adjusted: boolean;
+    total_od: number;
+    total_ml: number;
+    total_conducted: number;
+    total_attended: number;
+    total_adjusted_attended: number;
 }
 
 export interface AttendanceAnalysis {

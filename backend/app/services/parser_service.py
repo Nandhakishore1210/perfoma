@@ -42,6 +42,13 @@ class FileParserService:
                 'classes held', 'total', 'no of classes', 'classes_conducted',
                 'total_classes', 'no of hours', 'hours held'
             ],
+            'classes_posted': [
+                'posted', 'classes posted', 'hours posted', 'no of hours posted', 
+                'no. of hours posted', 'classes_posted', 'posted hours',
+                'total posted', 'total classes posted', 'total hours posted',
+                'number of posted', 'no. of posted', 'total class', 'total hours',
+                'no of hours', 'total'
+            ],
             'classes_attended': [
                 'attended', 'present', 'no. of hours attended', 'no.of hours attended',
                 'hours attended', 'classes attended', 'attend', 'no of hours attended',
@@ -52,9 +59,12 @@ class FileParserService:
                 'od', 'on duty', 'onduty', 'on-duty', 'duty', 'od count', 
                 'od_count', 'on_duty'
             ],
-'ml_count': [
+            'ml_count': [
                 'ml', 'medical', 'medical leave', 'medicalleave', 'medical-leave',
                 'ml count', 'ml_count', 'medical_leave'
+            ],
+            'department': [
+                'department', 'program', 'branch', 'dept', 'programme'
             ]
         }
     
@@ -136,6 +146,27 @@ class FileParserService:
             return best_match, best_score
         return None, 0.0
     
+    def _extract_global_department(self, df: pd.DataFrame, limit_rows: int = 15) -> Optional[str]:
+        """
+        Scan the first few rows to find a global department declaration, 
+        e.g. 'Department of Information Technology'.
+        """
+        keywords = ['department', 'program', 'programme', 'branch']
+        for i in range(min(limit_rows, len(df))):
+            row_vals = df.iloc[i].values
+            for j, val in enumerate(row_vals):
+                val_str = str(val).lower().strip()
+                if any(k in val_str for k in keywords):
+                    # Found a keyword. The actual department name might be in this cell or the next.
+                    if len(val_str) > len('department') + 3 and not val_str in keywords:
+                        # Extract after colon if exists, else the whole string might be the value 
+                        # If the value is "Department of Information Technology" it's good.
+                        return str(val).strip()
+                    # Check next column
+                    if j + 1 < len(row_vals) and pd.notna(row_vals[j+1]):
+                        return str(row_vals[j+1]).strip()
+        return None
+    
     def _auto_detect_header_row(self, file_path: str) -> Tuple[pd.DataFrame, int]:
         """
         Automatically detect the row containing column headers
@@ -182,6 +213,13 @@ class FileParserService:
         Returns:
             List of AttendanceRecordInput objects
         """
+        # Read raw first to try extracting global department
+        try:
+            raw_df = pd.read_excel(file_path, nrows=20)
+            global_dept = self._extract_global_department(raw_df)
+        except:
+            global_dept = None
+            
         # Auto-detect header row
         df, skiprows = self._auto_detect_header_row(file_path)
         
@@ -210,9 +248,11 @@ class FileParserService:
                 record = AttendanceRecordInput(
                     student_id=student_id,
                     student_name=str(row.get('student_name', '')).strip() if pd.notna(row.get('student_name')) else None,
+                    department=str(row.get('department', global_dept or '')).strip() if pd.notna(row.get('department')) or global_dept else None,
                     subject_code=subject_code,
                     subject_name=str(row.get('subject_name', '')).strip() if pd.notna(row.get('subject_name')) else None,
                     classes_conducted=int(float(row.get('classes_conducted', 0))) if pd.notna(row.get('classes_conducted')) else 0,
+                    classes_posted=int(float(row.get('classes_posted', 0))) if pd.notna(row.get('classes_posted')) else 0,
                     classes_attended=int(float(row.get('classes_attended', 0))) if pd.notna(row.get('classes_attended')) else 0,
                     od_count=int(float(row.get('od_count', 0))) if pd.notna(row.get('od_count')) else 0,
                     ml_count=int(float(row.get('ml_count', 0))) if pd.notna(row.get('ml_count')) else 0
@@ -241,9 +281,10 @@ class FileParserService:
         print("\n🔍 Fuzzy Column Matching:")
         
         # Find matches for each field in priority order
+        # Prioritize classes_posted over classes_conducted as per user request
         priority_order = [
-            'student_id', 'subject_code', 'classes_conducted', 'classes_attended',
-            'student_name', 'subject_name', 'od_count', 'ml_count'
+            'department', 'student_id', 'subject_code', 'classes_posted', 'classes_attended',
+            'student_name', 'subject_name', 'od_count', 'ml_count', 'classes_conducted'
         ]
         
         for field in priority_order:
@@ -316,9 +357,11 @@ class FileParserService:
                             record = AttendanceRecordInput(
                                 student_id=student_id,
                                 student_name=str(row_dict.get('student_name', '')).strip() if row_dict.get('student_name') else None,
+                                department=str(row_dict.get('department', '')).strip() if row_dict.get('department') else None,
                                 subject_code=subject_code,
                                 subject_name=str(row_dict.get('subject_name', '')).strip() if row_dict.get('subject_name') else None,
                                 classes_conducted=int(float(row_dict.get('classes_conducted', 0))) if row_dict.get('classes_conducted') else 0,
+                                classes_posted=int(float(row_dict.get('classes_posted', 0))) if row_dict.get('classes_posted') else 0,
                                 classes_attended=int(float(row_dict.get('classes_attended', 0))) if row_dict.get('classes_attended') else 0,
                                 od_count=int(float(row_dict.get('od_count', 0))) if row_dict.get('od_count') else 0,
                                 ml_count=int(float(row_dict.get('ml_count', 0))) if row_dict.get('ml_count') else 0

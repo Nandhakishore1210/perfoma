@@ -31,3 +31,26 @@ class Analysis(Base):
     
     # Store complete analysis result as JSON
     result_data = Column(JSON)
+
+class ProformaEntry(Base):
+    __tablename__ = "proforma_entries"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    upload_id = Column(String, index=True)
+    student_id = Column(String, index=True)
+    subject_code = Column(String, index=True, nullable=True) # New field
+    proforma_type = Column(String)  # "1A" or "1B"
+    
+    # For 1A: Reason for not being eligible
+    # For 1B: Reason for recommendation
+    reason = Column(String, nullable=True)
+    
+    # For 1B: Proof file path
+    proof_path = Column(String, nullable=True)
+    
+    # Status: "Pending", "Approved", "Rejected"
+    status = Column(String, default="Pending")
+    
+    # Timestamp
+    updated_at = Column(DateTime, default=datetime.utcnow)
+

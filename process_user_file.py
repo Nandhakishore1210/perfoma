@@ -42,18 +42,30 @@ def process_excel_file(file_path):
     
     # Try to read the Excel file with different configurations
     df = None
-    for skiprows in range(0, 20):
-        try:
-            temp_df = pd.read_excel(file_path, skiprows=skiprows)
-            # Look for columns that might contain student/subject data
-            cols_str = ' '.join([str(c).lower() for c in temp_df.columns])
-            if any(keyword in cols_str for keyword in ['student', 'roll', 'subject', 'class', 'attend']):
-                df = temp_df
-                print(f"✅ Found data starting at row {skiprows + 1}")
-                break
-        except:
-            continue
     
+    # Try row 1 (index 1) which we confirmed for Dummy 3
+    try:
+        temp_df = pd.read_excel(file_path, header=1)
+        cols_str = ' '.join([str(c).lower() for c in temp_df.columns])
+        if "regn. no." in cols_str and "course code" in cols_str:
+            df = temp_df
+            print("✅ Detected header at Row 2 (Index 1)")
+    except Exception as e:
+        print(f"Header detection error: {e}")
+        
+    # Fallback to standard loop
+    if df is None:
+        for skiprows in range(0, 5):
+            try:
+                temp_df = pd.read_excel(file_path, skiprows=skiprows)
+                cols_str = ' '.join([str(c).lower() for c in temp_df.columns])
+                if any(keyword in cols_str for keyword in ['student', 'roll', 'subject', 'class', 'attend']):
+                    df = temp_df
+                    print(f"✅ Found data starting at row {skiprows + 1}")
+                    break
+            except:
+                continue
+
     if df is None:
         print("❌ Could not find proper data structure in Excel file")
         return
@@ -85,6 +97,8 @@ def process_excel_file(file_path):
         elif any(x in col_lower for x in ['total class', 'classes conducted', 'total']):
             if 'subject_code' in column_mapping:  # Only after subject is found
                 column_mapping['conducted'] = col
+        elif any(x in col_lower for x in ['posted', 'classes posted', 'hours posted', 'total posted']):
+            column_mapping['posted'] = col
         elif any(x in col_lower for x in ['attend', 'present']):
             if 'conducted' in column_mapping:  # After conducted
                 column_mapping['attended'] = col
@@ -119,6 +133,7 @@ def process_excel_file(file_path):
                 'subject_code': str(row[column_mapping['subject_code']]).strip(),
                 'subject_name': str(row.get(column_mapping.get('subject_name'), '')).strip() if column_mapping.get('subject_name') else '',
                 'conducted': int(float(row[column_mapping['conducted']])) if pd.notna(row[column_mapping['conducted']]) else 0,
+                'posted': int(float(row.get(column_mapping.get('posted', 0), 0))) if column_mapping.get('posted') and pd.notna(row.get(column_mapping.get('posted'))) else 0,
                 'attended': int(float(row[column_mapping['attended']])) if pd.notna(row[column_mapping['attended']]) else 0,
                 'od': int(float(row.get(column_mapping.get('od'), 0))) if column_mapping.get('od') and pd.notna(row.get(column_mapping.get('od'))) else 0,
                 'ml': int(float(row.get(column_mapping.get('ml'), 0))) if column_mapping.get('ml') and pd.notna(row.get(column_mapping.get('ml'))) else 0,
@@ -157,6 +172,7 @@ def process_excel_file(file_path):
             'student_name': student_data['name'],
             'subjects': [],
             'total_conducted': 0,
+            'total_posted': 0,
             'total_attended': 0,
             'overall_percentage': 0,
             'category': ''
@@ -167,19 +183,21 @@ def process_excel_file(file_path):
             
             # Combine records
             total_conducted = sum(r['conducted'] for r in records_list)
+            total_posted = sum(r.get('posted', 0) for r in records_list)
             total_attended = sum(r['attended'] for r in records_list)
             total_od = sum(r['od'] for r in records_list)
             total_ml = sum(r['ml'] for r in records_list)
             
-            # Calculate attendance
-            original_pct = calculate_percentage(total_attended, total_conducted)
+            # Calculate attendance using posted if available
+            denominator = total_posted if total_posted > 0 else total_conducted
+            original_pct = calculate_percentage(total_attended, denominator)
             
             # Apply OD/ML if < 75%
             od_ml_adjusted = False
             final_pct = original_pct
             if original_pct < 75 and (total_od + total_ml > 0):
-                adjusted_attended = min(total_attended + total_od + total_ml, total_conducted)
-                final_pct = calculate_percentage(adjusted_attended, total_conducted)
+                adjusted_attended = min(total_attended + total_od + total_ml, denominator)
+                final_pct = calculate_percentage(adjusted_attended, denominator)
                 od_ml_adjusted = True
             
             category_key, emoji, category_label = get_category(final_pct)
@@ -190,6 +208,7 @@ def process_excel_file(file_path):
                 'is_combined': len(records_list) > 1,
                 'components': [r['subject_code'] for r in records_list],
                 'conducted': total_conducted,
+                'posted': total_posted,
                 'attended': total_attended,
                 'od': total_od,
                 'ml': total_ml,
@@ -203,13 +222,20 @@ def process_excel_file(file_path):
             
             student_result['subjects'].append(subject_result)
             student_result['total_conducted'] += total_conducted
+            student_result['total_posted'] += total_posted
             student_result['total_attended'] += total_attended
         
-        # Calculate overall
-        if student_result['total_conducted'] > 0:
+        # Calculate overall using posted if available
+        # Note: Mixing posted and conducted across subjects might be weird, but usually it's consistent per file.
+        # We can sum up total_posted and total_conducted.
+        # If total_posted > 0, we use it.
+        
+        overall_denominator = student_result['total_posted'] if student_result['total_posted'] > 0 else student_result['total_conducted']
+        
+        if overall_denominator > 0:
             student_result['overall_percentage'] = calculate_percentage(
                 student_result['total_attended'],
-                student_result['total_conducted']
+                overall_denominator
             )
             cat_key, _, _ = get_category(student_result['overall_percentage'])
             student_result['category'] = cat_key
@@ -217,47 +243,27 @@ def process_excel_file(file_path):
         
         results.append(student_result)
     
-    # Sort by overall percentage
-    results.sort(key=lambda x: x['overall_percentage'])
-    
-    # Display results
+    # Print results (filtered for 23BIT080)
     print("\n" + "=" * 100)
-    print("📊 SUMMARY STATISTICS")
+    print("ANALYSIS FOR STUDENT: 23BIT080")
     print("=" * 100)
-    print(f"\nTotal Students Analyzed: {len(results)}")
-    print(f"\n🔴 Critical (<65%):     {category_counts['critical']:3d} students")
-    print(f"🟠 Danger (65-75%):     {category_counts['danger']:3d} students")
-    print(f"🟡 Border (75-80%):     {category_counts['border']:3d} students")
-    print(f"🟢 Safe (≥80%):         {category_counts['safe']:3d} students")
-
     
-    # Show critical students
-    critical = [r for r in results if r['category'] == 'critical']
-    if critical:
-        print("\n" + "=" * 100)
-        print(f"⚠️  CRITICAL STUDENTS - {len(critical)} students below 65% attendance")
-        print("=" * 100)
-        for i, student in enumerate(critical[:15], 1):
-            print(f"\n{i}. {student['student_id']:15} {student['student_name'][:30]:30} Overall: {student['overall_percentage']:5.1f}%")
-            for subj in student['subjects']:
-                adj_marker = " ✅OD/ML" if subj['od_ml_adjusted'] else ""
-                combined_marker = " (T+L)" if subj['is_combined'] else ""
-                print(f"   {subj['emoji']} {subj['code']:10} {subj['final_pct']:5.1f}%{combined_marker}{adj_marker}")
-    
-    # Show top performers
-    safe = [r for r in results if r['category'] == 'safe']
-    if safe:
-        print("\n" + "=" * 100)
-        print(f"✨ TOP PERFORMERS - {len(safe)} students with ≥80% attendance")
-        print("=" * 100)
-        for i, student in enumerate(list(reversed(safe))[:10], 1):
-            print(f"{i}. {student['student_id']:15} {student['student_name'][:30]:30} Overall: {student['overall_percentage']:5.1f}%")
-    
-    print("\n" + "=" * 100)
-    print("✅ ANALYSIS COMPLETE")
-    print("=" * 100)
-    print(f"\n💡 This data can now be uploaded to the web interface for detailed reports and visualizations!")
+    found_student = False
+    for student in results:
+        if "23BIT080" in str(student['student_id']).upper():
+            found_student = True
+            print(f"Student: {student['student_name']} ({student['student_id']})")
+            print(f"Overall Percentage: {student['overall_percentage']}% [{student['category'].upper()}]")
+            print("-" * 80)
+            print(f"{'Subject':<10} {'Name':<30} {'posted':<10} {'Cond':<10} {'Attd':<10} {'OD':<5} {'ML':<5} {'Origin%':<8} {'Final%':<8}")
+            print("-" * 80)
+            
+            for subject in student['subjects']:
+                print(f"{subject['code']:<10} {subject['name'][:28]:<30} {subject['posted']:<10} {subject['conducted']:<10} {subject['attended']:<10} {subject['od']:<5} {subject['ml']:<5} {subject['original_pct']:<8} {subject['final_pct']:<8} {'(Adj)' if subject['od_ml_adjusted'] else ''}")
+            break
+            
+    if not found_student:
+        print("❌ Student 23BIT080 not found in the file.")
 
 if __name__ == "__main__":
-    file_path = "C:/Users/Lenovo/Desktop/perfoma/Sem 6 attendace.xlsx"
-    process_excel_file(file_path)
+    process_excel_file("Dummy 3.xlsx")

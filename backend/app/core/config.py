@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings
 from pydantic import field_validator
 from typing import List, Union
 import os
+import tempfile
 
 
 class Settings(BaseSettings):
@@ -21,7 +22,9 @@ class Settings(BaseSettings):
     # File Upload Settings
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_FILE_TYPES: List[str] = [".xlsx", ".xls", ".pdf"]
-    UPLOAD_DIR: str = "/tmp/uploads"  # Use /tmp for Render's read-only filesystem
+    
+    # Use system temp directory
+    UPLOAD_DIR: str = os.path.join(tempfile.gettempdir(), "perfoma_uploads")
     
     # Attendance Rules
     OD_ML_THRESHOLD: float = 75.0

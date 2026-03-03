@@ -9,10 +9,13 @@ export interface SubjectComponent {
     subject_code: string;
     subject_name?: string;
     classes_conducted: number;
+    classes_posted: number;
     classes_attended: number;
     od_count: number;
     ml_count: number;
     percentage: number;
+    adjusted_attended?: number;
+    final_percentage?: number;
 }
 
 export interface SubjectAttendance {
@@ -22,9 +25,11 @@ export interface SubjectAttendance {
     combined_from?: string[];
     components?: SubjectComponent[];
     classes_conducted: number;
+    classes_posted: number;
     classes_attended: number;
     od_count: number;
     ml_count: number;
+    adjusted_attended: number;
     original_percentage: number;
     final_percentage: number;
     od_ml_adjusted: boolean;

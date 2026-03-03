@@ -49,7 +49,13 @@ async def analyze_attendance(upload_id: str, regulation: str = "U18", db: Sessio
     for student_id, subjects in merged_subjects.items():
         # Get student name from first record
         student_name = next(
-            (rec.student_name for rec in records if rec.student_id == student_id),
+            (rec.student_name for rec in records if rec.student_id == student_id and rec.student_name),
+            None
+        )
+        
+        # Get department from first record
+        department = next(
+            (rec.department for rec in records if rec.student_id == student_id and rec.department),
             None
         )
         
@@ -59,6 +65,7 @@ async def analyze_attendance(upload_id: str, regulation: str = "U18", db: Sessio
             student_name=student_name,
             subjects=subjects
         )
+        student_attendance.department = department
         
         students.append(student_attendance)
     
@@ -159,15 +166,30 @@ async def generate_report(request: ReportRequest, db: Session = Depends(get_db))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Data corruption error: {str(e)}")
     
+    import os
     # Generate report based on format
     if request.format.lower() == "excel":
         try:
             filepath = report_generator.generate_excel_report(analysis)
             
             return ReportResponse(
-                filename=filepath.split('/')[-1],
+                filename=os.path.basename(filepath),
                 file_path=filepath,
                 format="excel"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to generate report: {str(e)}"
+            )
+    elif request.format.lower() == "pdf":
+        try:
+            filepath = report_generator.generate_pdf_report(analysis)
+            
+            return ReportResponse(
+                filename=os.path.basename(filepath),
+                file_path=filepath,
+                format="pdf"
             )
         except Exception as e:
             raise HTTPException(
@@ -188,17 +210,25 @@ async def download_report(filename: str):
     
     - **filename**: Report filename
     """
+    import tempfile
+    import os
     from pathlib import Path
     
-    filepath = Path("/tmp/reports") / filename
+    # Use the same directory as report_generator
+    temp_dir = os.path.join(tempfile.gettempdir(), "perfoma_reports")
+    filepath = Path(temp_dir) / filename
     
     if not filepath.exists():
-        raise HTTPException(status_code=404, detail="Report not found")
+        raise HTTPException(status_code=404, detail=f"Report not found at {filepath}")
     
+    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    if filename.lower().endswith('.pdf'):
+        media_type = "application/pdf"
+        
     return FileResponse(
         path=str(filepath),
         filename=filename,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        media_type=media_type
     )
 
 

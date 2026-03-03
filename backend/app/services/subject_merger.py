@@ -25,8 +25,8 @@ class SubjectMergerService:
         clean_code = subject_code.replace("-R21", "").replace("-R18", "")
         
         if regulation == "R24":
-            # R24 Logic: Merge 'Code' and 'CodeL'
-            # Check for explicit Lab suffix first
+            # R24 Logic: Merge 'Code' and 'CodeL' or 'Code' and 'CodeJ' (Project)
+            # Check for explicit Lab/Project suffix
             if clean_code.endswith(self.lab_suffix):
                 # Similar logic to U18 but specifically for L
                 base_length = len(clean_code) - 1
@@ -36,6 +36,15 @@ class SubjectMergerService:
                 else:
                     base_code = clean_code[:base_length]
                 return base_code, "L"
+            elif clean_code.endswith("J"):
+                # Project component - treat similar to Lab for merging
+                base_length = len(clean_code) - 1
+                if "-R" in subject_code:
+                    suffix_part = subject_code[subject_code.find("-R"):]
+                    base_code = clean_code[:base_length] + suffix_part
+                else:
+                    base_code = clean_code[:base_length]
+                return base_code, "L"  # Return L to indicate practical/lab type component
             else:
                 # Treat everything else (including T) as the base/Theory
                 # Even if it has T, we don't strip it unless it matches the L base... which is tricky.
@@ -121,6 +130,7 @@ class SubjectMergerService:
                 is_combined=False,
                 combined_from=None,
                 classes_conducted=rec.classes_conducted,
+                classes_posted=rec.classes_posted or 0,
                 classes_attended=rec.classes_attended,
                 od_count=rec.od_count or 0,
                 ml_count=rec.ml_count or 0
@@ -132,6 +142,7 @@ class SubjectMergerService:
         
         # Sum up all attendance data
         total_conducted = sum(rec.classes_conducted for rec in records)
+        total_posted = sum(rec.classes_posted or 0 for rec in records)
         total_attended = sum(rec.classes_attended for rec in records)
         total_od = sum(rec.od_count or 0 for rec in records)
         total_ml = sum(rec.ml_count or 0 for rec in records)
@@ -147,13 +158,18 @@ class SubjectMergerService:
         for rec in records:
             # Calculate component percentage
             comp_pct = 0.0
-            if rec.classes_conducted > 0:
-                comp_pct = round((rec.classes_attended / rec.classes_conducted) * 100, 2)
+            
+            # Use posted if available, else conducted
+            denominator = rec.classes_posted if (rec.classes_posted and rec.classes_posted > 0) else rec.classes_conducted
+            
+            if denominator > 0:
+                comp_pct = round((rec.classes_attended / denominator) * 100, 2)
                 
             components.append({
                 "subject_code": rec.subject_code,
                 "subject_name": rec.subject_name,
                 "classes_conducted": rec.classes_conducted,
+                "classes_posted": rec.classes_posted or 0,
                 "classes_attended": rec.classes_attended,
                 "od_count": rec.od_count or 0,
                 "ml_count": rec.ml_count or 0,
@@ -167,6 +183,7 @@ class SubjectMergerService:
             combined_from=combined_from,
             components=components,
             classes_conducted=total_conducted,
+            classes_posted=total_posted,
             classes_attended=total_attended,
             od_count=total_od,
             ml_count=total_ml
