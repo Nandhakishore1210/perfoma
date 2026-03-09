@@ -222,6 +222,7 @@ async def download_proforma_report(
     upload_id: str, 
     proforma_type: str,
     format: str = "pdf",
+    department: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     # 1. Get Analysis
@@ -237,11 +238,25 @@ async def download_proforma_report(
     
     students_data = analysis.result_data.get("students", [])
     report_data = []
+
+    # Normalise department filter (same logic as get_proforma_students)
+    dept_filter = department.strip().lower() if department else None
     
     for s_data in students_data:
         student_id = s_data.get("student_id")
         student_name = s_data.get("student_name")
         subjects = s_data.get("subjects", [])
+        student_dept = s_data.get("department") or ""
+
+        # Apply department filter
+        if dept_filter:
+            dept_norm = student_dept.lower()
+            if dept_filter not in dept_norm and dept_norm not in dept_filter:
+                filter_words = set(dept_filter.replace('-', ' ').split())
+                dept_words = set(dept_norm.replace('-', ' ').split())
+                meaningful_common = {w for w in (filter_words & dept_words) if len(w) > 2}
+                if not meaningful_common:
+                    continue
         
         for subject in subjects:
             final_pct = subject.get("final_percentage", 0.0)
@@ -286,6 +301,12 @@ async def download_proforma_report(
     import tempfile
     temp_dir = os.path.join(tempfile.gettempdir(), "perfoma_reports")
     os.makedirs(temp_dir, exist_ok=True)
+
+    # Build dept slug for filename
+    dept_slug = ""
+    if department and department.lower() != 'all':
+        import re as _re
+        dept_slug = "_" + _re.sub(r'[^A-Za-z0-9]+', '_', department.strip())[:20]
     
     if format.lower() == "excel":
         try:
@@ -307,7 +328,7 @@ async def download_proforma_report(
                 
             df = pd.DataFrame(excel_data)
             
-            filename = f"Proforma_{proforma_type}_{upload_id[:8]}.xlsx"
+            filename = f"Proforma_{proforma_type}{dept_slug}_{upload_id[:8]}.xlsx"
             filepath = os.path.join(temp_dir, filename)
             
             # Write to Excel
@@ -337,10 +358,10 @@ async def download_proforma_report(
             generator = ProformaPDFGenerator()
             if proforma_type == "1A":
                 pdf_buffer = generator.generate_proforma_1a(report_data)
-                filename = f"Proforma_1A_{upload_id[:8]}.pdf"
+                filename = f"Proforma_1A{dept_slug}_{upload_id[:8]}.pdf"
             else:
                 pdf_buffer = generator.generate_proforma_1b(report_data)
-                filename = f"Proforma_1B_{upload_id[:8]}.pdf"
+                filename = f"Proforma_1B{dept_slug}_{upload_id[:8]}.pdf"
             
             filepath = os.path.join(temp_dir, filename)
             with open(filepath, "wb") as f:

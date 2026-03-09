@@ -178,7 +178,7 @@ const ProformaDashboard: React.FC<ProformaDashboardProps> = ({ uploadId, selecte
         setDownloading(true);
         try {
             const type = tabValue === 0 ? '1A' : '1B';
-            const reportData = await generateProformaReport(uploadId, type, format);
+            const reportData = await generateProformaReport(uploadId, type, format, selectedDepartment);
 
             // Use the shared, working download endpoint
             const url = downloadReport(reportData.filename);

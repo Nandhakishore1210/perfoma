@@ -47,10 +47,11 @@ export const getAnalysis = async (uploadId: string) => {
 };
 
 // Generate report
-export const generateReport = async (uploadId: string, format: string = 'excel') => {
+export const generateReport = async (uploadId: string, format: string = 'excel', department?: string) => {
     const response = await api.post('/reports/generate', {
         upload_id: uploadId,
         format,
+        ...(department && department !== 'all' ? { department } : {}),
     });
     return response.data;
 };
@@ -108,9 +109,11 @@ export const approveStudent = async (uploadId: string, studentId: string, subjec
     return response.data;
 };
 
-export const generateProformaReport = async (uploadId: string, type: '1A' | '1B', format: 'pdf' | 'excel' = 'pdf') => {
-    const response = await api.get(`/proforma/download/${uploadId}/${type}`, {
-        params: { format }
-    });
+export const generateProformaReport = async (uploadId: string, type: '1A' | '1B', format: 'pdf' | 'excel' = 'pdf', department?: string) => {
+    const params: Record<string, string> = { format };
+    if (department && department !== 'all') {
+        params.department = department;
+    }
+    const response = await api.get(`/proforma/download/${uploadId}/${type}`, { params });
     return response.data;
 };

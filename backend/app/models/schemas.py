@@ -147,6 +147,10 @@ class ReportRequest(BaseModel):
     )
     include_charts: bool = True
     include_summary: bool = True
+    department: Optional[str] = Field(
+        default=None,
+        description="Filter report to a specific department (None = all departments)"
+    )
 
 
 class ReportResponse(BaseModel):

@@ -96,7 +96,7 @@ const AttendanceDashboard: React.FC<AttendanceDashboardProps> = ({ uploadId, fil
     const handleDownloadReport = async (format: 'excel' | 'pdf') => {
         setDownloading(true);
         try {
-            const reportData = await generateReport(uploadId, format);
+            const reportData = await generateReport(uploadId, format, selectedDepartment);
 
             // Create a temporary link to trigger download
             const url = downloadReport(reportData.filename);

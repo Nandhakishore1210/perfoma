@@ -29,7 +29,8 @@ class ReportGenerator:
     def generate_excel_report(
         self,
         analysis: AttendanceAnalysisResponse,
-        filename: str = None
+        filename: str = None,
+        department: str = None
     ) -> str:
         """
         Generate comprehensive Excel report with formatting
@@ -37,13 +38,29 @@ class ReportGenerator:
         Args:
             analysis: Complete attendance analysis
             filename: Output filename (optional)
+            department: If provided, only include students from this department
             
         Returns:
             Path to generated file
         """
+        # Filter students by department if specified
+        if department and department.lower() != 'all':
+            dept_norm = department.strip().lower()
+            students_to_report = [
+                s for s in analysis.students
+                if s.department and dept_norm in s.department.strip().lower()
+            ]
+        else:
+            students_to_report = list(analysis.students)
+
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"attendance_report_{timestamp}.xlsx"
+            if department and department.lower() != 'all':
+                # Build a safe short dept slug for the filename
+                dept_slug = re.sub(r'[^A-Za-z0-9]+', '_', department.strip())[:30]
+                filename = f"attendance_report_{dept_slug}_{timestamp}.xlsx"
+            else:
+                filename = f"attendance_report_{timestamp}.xlsx"
         
         filepath = self.output_dir / filename
         
@@ -124,7 +141,7 @@ class ReportGenerator:
         row = 4
         s_no = 1
         
-        for student in analysis.students:
+        for student in students_to_report:
             start_row = row
             
             # Aggregate totals for the STUDENT (Grand Total Row)
@@ -360,7 +377,7 @@ class ReportGenerator:
         # --- GENERATE SUBJECT-WISE SHEETS ---
         # 1. unique subjects map: Code -> Name
         unique_subjects = {}
-        for student in analysis.students:
+        for student in students_to_report:
             for sub in student.subjects:
                 if sub.subject_code not in unique_subjects:
                     unique_subjects[sub.subject_code] = sub.subject_name
@@ -410,7 +427,7 @@ class ReportGenerator:
             sub_row = 4
             sub_s_no = 1
             
-            for student in analysis.students:
+            for student in students_to_report:
                 # Find the subject for this student
                 target_subject = next((s for s in student.subjects if s.subject_code == sub_code), None)
                 
@@ -641,7 +658,8 @@ class ReportGenerator:
     def generate_pdf_report(
         self,
         analysis: AttendanceAnalysisResponse,
-        filename: str = None
+        filename: str = None,
+        department: str = None
     ) -> str:
         """
         Generate PDF report using ReportLab
@@ -649,10 +667,21 @@ class ReportGenerator:
         Args:
             analysis: Complete attendance analysis
             filename: Output filename (optional)
+            department: If provided, only include students from this department
             
         Returns:
             Path to generated file
         """
+        # Filter students by department if specified
+        if department and department.lower() != 'all':
+            dept_norm = department.strip().lower()
+            students_to_report = [
+                s for s in analysis.students
+                if s.department and dept_norm in s.department.strip().lower()
+            ]
+        else:
+            students_to_report = list(analysis.students)
+
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4, landscape
         from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -661,7 +690,11 @@ class ReportGenerator:
         
         if not filename:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"attendance_report_{timestamp}.pdf"
+            if department and department.lower() != 'all':
+                dept_slug = re.sub(r'[^A-Za-z0-9]+', '_', department.strip())[:30]
+                filename = f"attendance_report_{dept_slug}_{timestamp}.pdf"
+            else:
+                filename = f"attendance_report_{timestamp}.pdf"
             
         filepath = self.output_dir / filename
         
@@ -698,7 +731,7 @@ class ReportGenerator:
         ]]
         
         # Rows
-        for idx, student in enumerate(analysis.students, 1):
+        for idx, student in enumerate(students_to_report, 1):
             # Calculate aggregations (reuse logic from dataframe generation or just loop)
             # We need Subject Totals for display? Or Student Grand Totals?
             # Consolidated report shows Student Grand Totals.

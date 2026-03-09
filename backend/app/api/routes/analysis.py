@@ -170,7 +170,10 @@ async def generate_report(request: ReportRequest, db: Session = Depends(get_db))
     # Generate report based on format
     if request.format.lower() == "excel":
         try:
-            filepath = report_generator.generate_excel_report(analysis)
+            filepath = report_generator.generate_excel_report(
+                analysis,
+                department=request.department
+            )
             
             return ReportResponse(
                 filename=os.path.basename(filepath),
@@ -184,7 +187,10 @@ async def generate_report(request: ReportRequest, db: Session = Depends(get_db))
             )
     elif request.format.lower() == "pdf":
         try:
-            filepath = report_generator.generate_pdf_report(analysis)
+            filepath = report_generator.generate_pdf_report(
+                analysis,
+                department=request.department
+            )
             
             return ReportResponse(
                 filename=os.path.basename(filepath),
